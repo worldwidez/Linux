@@ -1,7 +1,11 @@
-import requests
 import argparse
+import requests
+import json
+from datetime import datetime
 
-github_token = "YOUR_GITHUB_TOKEN"
+# Replace "your_github_token" with your personal access token from GitHub.
+# You can generate one at https://github.com/settings/tokens/new?scopes=repo
+github_token = "*********"
 
 headers = {
     "Accept": "application/vnd.github+json",
@@ -37,26 +41,43 @@ def get_repository(repo_url):
         print(f"Failed to fetch repository data from GitHub API. Status code: {response.status_code}")
         return None
 
+def search_domains(query):
+    url = f"https://api.github.com/search/repositories?q={query}+in:name+in:description+in:readme&sort=created&order=desc"
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Failed to fetch data from GitHub API. Status code: {response.status_code}")
+        return None
+
 def main():
     parser = argparse.ArgumentParser(description='Search for repositories on GitHub')
-    parser.add_argument('-c', '--company_name', type=str, help='The name of the company to search for', required=True)
+    parser.add_argument('-c', '--company_name', type=str, help='The name of the company to search for', required=False)
     parser.add_argument('-q', '--query', type=str, help='The value to search for in the repositories', required=False)
+    parser.add_argument('-d', '--domain', type=str, help='The domain to search for in the repositories', required=False)
     args = parser.parse_args()
 
     company_name = args.company_name
     query = args.query
+    domain = args.domain
 
-    if query:
+    if query and company_name:
         repositories = search_github(f"{query}+{company_name}")
-    else:
+    elif domain:
+        repositories = search_domains(domain)
+    elif company_name:
         repositories = search_github(f"{company_name}")
+    else:
+        print("Please provide a company name, query, or domain to search.")
+        return
 
     print(f"\n{'*' * 80}\n")
-    print(f"Report for company name: {company_name}, search query: {query}\n")
+    print(f"Report for company name: {company_name}, search query: {query}, domain: {domain}\n")
     print(f"{'*' * 80}\n")
 
     if repositories:
-        print("Repositories mentioning your company (sorted by date created, most recent first):\n")
+        print("Repositories mentioning your company or domain (sorted by date created, most recent first):\n")
         for repo in repositories["items"]:
             print(f"Repository: {repo['name']}")
             print(f"URL: {repo['html_url']}")
@@ -68,4 +89,4 @@ def main():
     print(f"{'*' * 80}\n")
 
 if __name__ == "__main__":
-    main()"
+    main()
